@@ -17,6 +17,9 @@ pnpm-debug.log*
 !.env.example
 backend/.env
 frontend/.env
+.agents/
+skills-lock.json
+codex.md
 
 # Node / frontend
 frontend/node_modules/

@@ -80,7 +80,7 @@ func (h *TransferHandler) StartTransfer(c *fiber.Ctx) error {
 			})
 		}
 		job := h.transfer.NewJob(total)
-		go h.transfer.RunTransferGrouped(job.ID, groups, s.SoundCloudToken)
+		go h.transfer.RunTransferGrouped(job.ID, groups, s.SoundCloudToken, s.SoundCloudClientID)
 		return c.JSON(fiber.Map{"job_id": job.ID})
 	}
 
@@ -110,7 +110,7 @@ func (h *TransferHandler) StartTransfer(c *fiber.Ctx) error {
 	}
 
 	job := h.transfer.NewJob(len(allTracks))
-	go h.transfer.RunTransfer(job.ID, allTracks, s.SoundCloudToken, req.PlaylistName)
+	go h.transfer.RunTransfer(job.ID, allTracks, s.SoundCloudToken, s.SoundCloudClientID, req.PlaylistName)
 	return c.JSON(fiber.Map{"job_id": job.ID})
 }
 

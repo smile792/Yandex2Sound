@@ -50,7 +50,7 @@ func (s *TransferService) GetJob(jobID string) (*models.TransferJob, bool) {
 	return &clone, true
 }
 
-func (s *TransferService) RunTransfer(jobID string, tracks []models.Track, scToken, playlistName string) {
+func (s *TransferService) RunTransfer(jobID string, tracks []models.Track, scToken, scClientID, playlistName string) {
 	setStatus(jobID, "running")
 	playlistID, playlistURL, err := s.soundCloud.CreatePlaylist(scToken, playlistName)
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *TransferService) RunTransfer(jobID string, tracks []models.Track, scTok
 	for i, track := range tracks {
 		query := strings.TrimSpace(track.Artists + " - " + track.Title)
 		setCurrent(jobID, i+1, track.Title)
-		trackID, _, found, err := s.withRetrySearch(scToken, query)
+		trackID, _, found, err := s.withRetrySearch(scToken, query, scClientID)
 		if err != nil {
 			appendLog(jobID, models.TransferLog{TrackTitle: withErr("[search] "+query, err), Status: "error"}, true)
 			time.Sleep(300 * time.Millisecond)
@@ -94,7 +94,7 @@ func (s *TransferService) RunTransfer(jobID string, tracks []models.Track, scTok
 	jobsMu.Unlock()
 }
 
-func (s *TransferService) RunTransferGrouped(jobID string, groups []TransferGroup, scToken string) {
+func (s *TransferService) RunTransferGrouped(jobID string, groups []TransferGroup, scToken, scClientID string) {
 	setStatus(jobID, "running")
 	processed := 0
 	firstResultURL := ""
@@ -115,7 +115,7 @@ func (s *TransferService) RunTransferGrouped(jobID string, groups []TransferGrou
 			displayTrack := "[" + group.PlaylistName + "] " + query
 			setCurrent(jobID, processed, displayTrack)
 
-			trackID, _, found, err := s.withRetrySearch(scToken, query)
+			trackID, _, found, err := s.withRetrySearch(scToken, query, scClientID)
 			if err != nil {
 				appendLog(jobID, models.TransferLog{TrackTitle: withErr("[search] "+displayTrack, err), Status: "error"}, true)
 				time.Sleep(300 * time.Millisecond)
@@ -148,10 +148,10 @@ func (s *TransferService) RunTransferGrouped(jobID string, groups []TransferGrou
 	jobsMu.Unlock()
 }
 
-func (s *TransferService) withRetrySearch(token, query string) (string, string, bool, error) {
+func (s *TransferService) withRetrySearch(token, query, clientID string) (string, string, bool, error) {
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
-		id, url, found, err := s.soundCloud.SearchTrack(token, query)
+		id, url, found, err := s.soundCloud.SearchTrack(token, query, clientID)
 		if err == nil {
 			return id, url, found, nil
 		}

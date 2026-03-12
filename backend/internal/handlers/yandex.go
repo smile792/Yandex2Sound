@@ -142,3 +142,18 @@ func (h *YandexHandler) GetPlaylistTracks(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"items": tracks})
 }
+
+func (h *YandexHandler) Clear(c *fiber.Ctx) error {
+	s := session.Get(c)
+	s.YandexToken = ""
+	s.YandexUserID = ""
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+func (h *YandexHandler) Status(c *fiber.Ctx) error {
+	s := session.Get(c)
+	return c.JSON(fiber.Map{
+		"connected": s.YandexToken != "" && s.YandexUserID != "",
+		"user_id":   s.YandexUserID,
+	})
+}

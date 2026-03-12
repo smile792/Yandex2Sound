@@ -34,21 +34,29 @@ func NewSoundCloudService() *SoundCloudService {
 	}
 }
 
-func (s *SoundCloudService) GetAuthURL() string {
+func (s *SoundCloudService) GetAuthURL(clientID string) (string, error) {
+	resolvedClientID := s.resolveClientID(clientID)
+	if resolvedClientID == "" {
+		return "", fmt.Errorf("soundcloud client_id is not configured")
+	}
 	q := url.Values{}
-	q.Set("client_id", s.clientID)
+	q.Set("client_id", resolvedClientID)
 	q.Set("redirect_uri", s.redirectURI)
 	q.Set("response_type", "code")
 	q.Set("scope", "non-expiring")
-	return "https://soundcloud.com/connect?" + q.Encode()
+	return "https://soundcloud.com/connect?" + q.Encode(), nil
 }
 
-func (s *SoundCloudService) ExchangeCode(code string) (string, error) {
+func (s *SoundCloudService) ExchangeCode(code, clientID, clientSecret string) (string, error) {
+	resolvedClientID, resolvedClientSecret, err := s.resolveCredentials(clientID, clientSecret)
+	if err != nil {
+		return "", err
+	}
 	form := url.Values{}
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", code)
-	form.Set("client_id", s.clientID)
-	form.Set("client_secret", s.clientSecret)
+	form.Set("client_id", resolvedClientID)
+	form.Set("client_secret", resolvedClientSecret)
 	form.Set("redirect_uri", s.redirectURI)
 
 	resp, err := s.httpClient.Post(
@@ -105,7 +113,8 @@ func (s *SoundCloudService) GetMe(token string) (string, string, error) {
 	return id, username, nil
 }
 
-func (s *SoundCloudService) SearchTrack(token, query string) (string, string, bool, error) {
+func (s *SoundCloudService) SearchTrack(token, query, clientID string) (string, string, bool, error) {
+	resolvedClientID := s.resolveClientID(clientID)
 	parseCollection := func(body []byte) (string, string, bool, error) {
 		var payload map[string]any
 		if err := json.Unmarshal(body, &payload); err != nil {
@@ -146,8 +155,15 @@ func (s *SoundCloudService) SearchTrack(token, query string) (string, string, bo
 		}
 	}
 
+	if resolvedClientID == "" {
+		if err1 != nil {
+			return "", "", false, err1
+		}
+		return "", "", false, fmt.Errorf("soundcloud client_id is not configured")
+	}
+
 	// 2) Fallback: api-v2 search with auth.
-	u2 := s.apiBase + "/search/tracks?q=" + url.QueryEscape(query) + "&limit=1&client_id=" + url.QueryEscape(s.clientID)
+	u2 := s.apiBase + "/search/tracks?q=" + url.QueryEscape(query) + "&limit=1&client_id=" + url.QueryEscape(resolvedClientID)
 	req2, _ := http.NewRequest(http.MethodGet, u2, nil)
 	resp2, err2 := s.doAuthed(req2, token)
 	if err2 == nil {
@@ -261,4 +277,35 @@ func (s *SoundCloudService) doAuthed(req *http.Request, token string) (*http.Res
 		}
 	}
 	return s.httpClient.Do(fallbackReq)
+}
+
+func (s *SoundCloudService) DefaultClientID() string {
+	return strings.TrimSpace(s.clientID)
+}
+
+func (s *SoundCloudService) HasDefaultClientSecret() bool {
+	return strings.TrimSpace(s.clientSecret) != ""
+}
+
+func (s *SoundCloudService) resolveClientID(clientID string) string {
+	resolvedClientID := strings.TrimSpace(clientID)
+	if resolvedClientID != "" {
+		return resolvedClientID
+	}
+	return strings.TrimSpace(s.clientID)
+}
+
+func (s *SoundCloudService) resolveCredentials(clientID, clientSecret string) (string, string, error) {
+	resolvedClientID := strings.TrimSpace(clientID)
+	if resolvedClientID == "" {
+		resolvedClientID = strings.TrimSpace(s.clientID)
+	}
+	resolvedClientSecret := strings.TrimSpace(clientSecret)
+	if resolvedClientSecret == "" {
+		resolvedClientSecret = strings.TrimSpace(s.clientSecret)
+	}
+	if resolvedClientID == "" || resolvedClientSecret == "" {
+		return "", "", fmt.Errorf("soundcloud client credentials are not configured")
+	}
+	return resolvedClientID, resolvedClientSecret, nil
 }

@@ -1,19 +1,151 @@
-﻿@tailwind base;
+@import url("https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;700&display=swap");
+
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  color: #f4f4f4;
-  background: radial-gradient(1300px 900px at 80% -20%, #2b1f0a, #0f0f0f 45%);
+  --bg-base: #0d0d0d;
+  --bg-soft: #131313;
+  --panel: rgba(19, 19, 19, 0.72);
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.26);
+  --text-main: #f3f3ef;
+  --text-muted: #bdb9ae;
+  --accent-yandex: #ffd347;
+  --accent-soundcloud: #ff6a1f;
+  --shadow-warm: 0 16px 42px rgba(0, 0, 0, 0.45);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  color: var(--text-main);
+  background:
+    radial-gradient(1200px 680px at 8% -12%, rgba(255, 204, 0, 0.2), transparent 54%),
+    radial-gradient(1000px 680px at 92% -10%, rgba(255, 85, 0, 0.18), transparent 56%),
+    linear-gradient(180deg, #101010 0%, #090909 100%);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  color: var(--text-main);
+  background:
+    repeating-linear-gradient(
+      140deg,
+      rgba(255, 255, 255, 0.015) 0 1px,
+      transparent 1px 9px
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 40%),
+    var(--bg-base);
+  letter-spacing: 0.01em;
 }
 
 * {
   box-sizing: border-box;
 }
 
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  position: relative;
+}
+
+.app-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 15%, rgba(255, 211, 71, 0.08), transparent 32%),
+    radial-gradient(circle at 90% 20%, rgba(255, 106, 31, 0.08), transparent 34%);
+}
+
+.surface-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-warm);
+  backdrop-filter: blur(8px);
+}
+
+.surface-card {
+  background: linear-gradient(
+    170deg,
+    rgba(29, 29, 29, 0.92) 0%,
+    rgba(17, 17, 17, 0.86) 100%
+  );
+  border: 1px solid var(--line);
+}
+
+.display-title {
+  font-family: "Antonio", "IBM Plex Mono", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.input-field {
+  width: 100%;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: rgba(9, 9, 9, 0.8);
+  color: var(--text-main);
+  padding: 0.62rem 0.7rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--line-strong);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 211, 71, 0.14);
+}
+
+.btn {
+  border-radius: 0.72rem;
+  border: 1px solid var(--line);
+  padding: 0.56rem 0.82rem;
+  font-weight: 700;
+  transition: transform 0.15s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-main);
+}
+
+.btn-ghost:hover {
+  border-color: var(--line-strong);
+}
+
+.btn-yandex {
+  border-color: rgba(255, 211, 71, 0.4);
+  background: linear-gradient(135deg, #ffdb66, #f5b800);
+  color: #171717;
+}
+
+.btn-soundcloud {
+  border-color: rgba(255, 106, 31, 0.44);
+  background: linear-gradient(135deg, #ff7a30, #ff520d);
+  color: #1a120d;
+}
+
+.ui-fade-up {
+  animation: ui-fade-up 0.44s ease both;
+}
+
+@keyframes ui-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -37,7 +37,9 @@ func main() {
 
 	app.Use(func(c *fiber.Ctx) error {
 		session.Get(c)
-		return c.Next()
+		err := c.Next()
+		session.Save(c)
+		return err
 	})
 
 	yandexService := services.NewYandexService()
@@ -52,10 +54,14 @@ func main() {
 	api.Get("/yandex/auth/url", yandexHandler.AuthURL)
 	api.Get("/yandex/auth/callback", yandexHandler.AuthCallback)
 	api.Post("/yandex/auth/validate", yandexHandler.ValidateToken)
+	api.Post("/yandex/clear", yandexHandler.Clear)
+	api.Get("/yandex/status", yandexHandler.Status)
 	api.Get("/yandex/playlists", yandexHandler.GetPlaylists)
 	api.Get("/yandex/playlist/:id/tracks", yandexHandler.GetPlaylistTracks)
 
 	api.Get("/soundcloud/auth/url", soundHandler.AuthURL)
+	api.Post("/soundcloud/config", soundHandler.SetConfig)
+	api.Post("/soundcloud/clear", soundHandler.ClearConfig)
 	api.Get("/soundcloud/auth", soundHandler.AuthStart)
 	api.Get("/soundcloud/auth/callback", soundHandler.AuthCallback)
 	api.Get("/soundcloud/status", soundHandler.Status)

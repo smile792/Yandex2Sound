@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/url"
 	"os"
 	"strings"
 
@@ -20,7 +19,48 @@ func NewSoundCloudHandler(soundCloud *services.SoundCloudService) *SoundCloudHan
 }
 
 func (h *SoundCloudHandler) AuthURL(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{"url": h.soundCloud.GetAuthURL()})
+	s := session.Get(c)
+	u, err := h.soundCloud.GetAuthURL(s.SoundCloudClientID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+	return c.JSON(fiber.Map{"url": u})
+}
+
+type soundCloudConfigReq struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+}
+
+func (h *SoundCloudHandler) SetConfig(c *fiber.Ctx) error {
+	var req soundCloudConfigReq
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "invalid body")
+	}
+	clientID := strings.TrimSpace(req.ClientID)
+	clientSecret := strings.TrimSpace(req.ClientSecret)
+	if clientID == "" || clientSecret == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "client_id and client_secret are required")
+	}
+
+	s := session.Get(c)
+	s.SoundCloudClientID = clientID
+	s.SoundCloudClientSecret = clientSecret
+	// Existing token belongs to old app credentials and should be re-authorized.
+	s.SoundCloudToken = ""
+	s.SoundCloudUserID = ""
+	s.SoundCloudName = ""
+	return c.JSON(fiber.Map{"ok": true})
+}
+
+func (h *SoundCloudHandler) ClearConfig(c *fiber.Ctx) error {
+	s := session.Get(c)
+	s.SoundCloudClientID = ""
+	s.SoundCloudClientSecret = ""
+	s.SoundCloudToken = ""
+	s.SoundCloudUserID = ""
+	s.SoundCloudName = ""
+	return c.JSON(fiber.Map{"ok": true})
 }
 
 func (h *SoundCloudHandler) AuthCallback(c *fiber.Ctx) error {
@@ -28,11 +68,12 @@ func (h *SoundCloudHandler) AuthCallback(c *fiber.Ctx) error {
 	if code == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "code query parameter is required")
 	}
-	token, err := h.soundCloud.ExchangeCode(code)
+
+	s := session.Get(c)
+	token, err := h.soundCloud.ExchangeCode(code, s.SoundCloudClientID, s.SoundCloudClientSecret)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadGateway, err.Error())
 	}
-	s := session.Get(c)
 	s.SoundCloudToken = token
 	id, username, err := h.soundCloud.GetMe(token)
 	if err == nil {
@@ -55,18 +96,28 @@ func (h *SoundCloudHandler) AuthCallback(c *fiber.Ctx) error {
 
 func (h *SoundCloudHandler) Status(c *fiber.Ctx) error {
 	s := session.Get(c)
-	return c.JSON(fiber.Map{"connected": s.SoundCloudToken != "", "username": s.SoundCloudName})
+	clientID := strings.TrimSpace(s.SoundCloudClientID)
+	if clientID == "" {
+		clientID = h.soundCloud.DefaultClientID()
+	}
+	hasClientSecret := strings.TrimSpace(s.SoundCloudClientSecret) != ""
+	if !hasClientSecret {
+		hasClientSecret = h.soundCloud.HasDefaultClientSecret()
+	}
+
+	return c.JSON(fiber.Map{
+		"connected":         s.SoundCloudToken != "",
+		"username":          s.SoundCloudName,
+		"client_id":         clientID,
+		"has_client_secret": hasClientSecret,
+	})
 }
 
 func (h *SoundCloudHandler) AuthStart(c *fiber.Ctx) error {
-	u := h.soundCloud.GetAuthURL()
-	return c.Redirect(u, fiber.StatusTemporaryRedirect)
-}
-
-func callbackURL(base string) string {
-	u, _ := url.Parse(base)
-	if u == nil {
-		return ""
+	s := session.Get(c)
+	u, err := h.soundCloud.GetAuthURL(s.SoundCloudClientID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
-	return u.String()
+	return c.Redirect(u, fiber.StatusTemporaryRedirect)
 }
